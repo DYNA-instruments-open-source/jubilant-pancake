@@ -1,0 +1,46 @@
+Container-Start für Kernel-Konfiguration, -Bau und -Installation:
+docker run --rm -v $(pwd)/imx6ull-colibri-kernel-build:/usr/src/build-armv7a-unknown-linux-gnueabihf-imx6ull-colibri -v $(pwd)/rootfs-target:/usr/armv7a-unknown-linux-gnueabihf/mnt/reduced-rootfs -v $(pwd)/rootfs:/usr/armv7a-unknown-linux-gnueabihf/mnt/gentoo -v $(pwd)/target-images/usr/armv7a-unknown-linux-gnueabihf/mnt/images --privileged -it dynainstrumentsoss/dyna-linux-colibri-final:2019.06
+
+
+Root-FS bauen:
+armv7a-unknown-linux-gnueabihf-chroot emerge --root=/mnt/gentoo -1K sys-apps/busybox
+mkdir -p /mnt/gentoo/usr/bin
+cp /usr/bin/qemu-arm /mnt/gentoo/usr/bin
+chroot /mnt/gentoo busybox --install -s
+armv7a-unknown-linux-gnueabihf-chroot emerge --root=/mnt/gentoo --noreplace -K $MERGE_JOBS @embedded-minimal-root
+evtl.: armv7a-unknown-linux-gnueabihf-chroot emerge --root=/mnt/gentoo --noreplace -K $MERGE_JOBS @embedded-fs-utils
+rm -f /mnt/gentoo/etc/runlevels/boot/{save-keymaps,keymaps,save-termencoding,termencoding,binfmt}
+rm -f /mnt/gentoo/etc/runlevels/default/netmount
+sed -i -E 's/^#rc_need *= *"!rpc.idmapd" */rc_need="!rpc.idmapd"/g' /mnt/gentoo/etc/conf.d/nfsclient
+sed -i -E -e's/^#rc_interactive *= *".*" */rc_interactive="YES"/g' -e's/^#rc_sys *= *".*".*/rc_sys=""/g' /mnt/gentoo/etc/rc.conf
+echo 'hostname="DYNAcolibri"' >/mnt/gentoo/etc/conf.d/hostname
+echo "root:X8dzAb3B" | chpasswd -R /mnt/gentoo/
+armv7a-unknown-linux-gnueabihf-chroot cp /root/fstab-sdcard /mnt/gentoo/etc/fstab
+
+Kernel bauen:
+cd /usr/src/linux
+export PATH="/usr/lib/distcc/bin:$PATH"
+export SYSROOT=/mnt/gentoo/
+
+armv7a-unknown-linux-gnueabihf-xkmake O=/usr/src/build-armv7a-unknown-linux-gnueabihf-imx6ull-colibri/ menuconfig
+armv7a-unknown-linux-gnueabihf-xkmake O=/usr/src/build-armv7a-unknown-linux-gnueabihf-imx6ull-colibri/ all -j 60
+armv7a-unknown-linux-gnueabihf-xkmake O=/usr/src/build-armv7a-unknown-linux-gnueabihf-imx6ull-colibri/ modules_install zinstall
+cp /usr/src/build-armv7a-unknown-linux-gnueabihf-imx6ull-colibri/arch/arm/boot/dts/imx6ull-colibri-eval-v3.dtb /mnt/gentoo/boot/dtbs/
+
+ln -sfT System.map-4.19.57-gentoo /mnt/gentoo/boot/System.map
+ln -sfT vmlinuz-4.19.57-gentoo /mnt/gentoo/boot/kernel
+target-chroot echo YES \| etc-update --automode -9
+
+
+auf SD-Karte übertragen auf dem Host:
+mount /dev/sdg3 /mnt/gentoo/ && mount /dev/sdg1 /mnt/gentoo/boot/
+rsync -acHPx --delete ~lode/docker/colibri-GK/rootfs-target/ /mnt/gentoo/
+umount -R /mnt/gentoo/ && eject /dev/sdg
+
+UBIFS bauen:
+
+
+Container und Volumes wegräumen:
+docker rmi $(docker images -f "dangling=true" -q)
+docker volume rm $(docker volume ls -q -f dangling=true)
+

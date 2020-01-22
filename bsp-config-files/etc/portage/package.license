@@ -1,0 +1,2 @@
+>=sys-firmware/firmware-imx-5.4 LA_OPT_BASE_LICENSE
+sys-kernel/linux-firmware linux-fw-redistributable no-source-code

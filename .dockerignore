@@ -1,0 +1,7 @@
+build-docker-image.sh
+log/*
+log
+doc/*
+doc
+build-cache
+.svn

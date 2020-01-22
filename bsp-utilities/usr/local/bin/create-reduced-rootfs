@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# make missing directories
+mkdir -p /usr/${TARGET}/mnt/gentoo/{boot/dtbs,opt,dev,dev/shm,sys,proc,root,mnt} /usr/${TARGET}/mnt/reduced-rootfs
+
+# adjust access mask
+chmod 1777 /usr/${TARGET}/mnt/gentoo/dev/shm
+
+# transfer tree to target dir
+rsync -acHP --delete --exclude-from=/usr/local/lib/embedded-BSP/rm-data-after-emerge-embedded-rootfs-set.txt /usr/${TARGET}/mnt/gentoo/ /usr/${TARGET}/mnt/reduced-rootfs/
+
+#for r in $(cat '/usr/local/lib/DYNA-BSP/rm-data-after-emerge-DYNAlinux-set.txt'); do 
+#  rm -rf /usr/${TARGET}/mnt/reduced-rootfs/$r
+#done
+
+# adjust busybox links, so they do not shadow explicitly installed programs
+for f in $(find /usr/${TARGET}/mnt/reduced-rootfs/{bin,sbin,usr/bin,usr/sbin} -lname '/bin/busybox'); do 
+  test -e /usr/${TARGET}/mnt/reduced-rootfs/usr/bin/$(basename $f) -o -e /usr/${TARGET}/mnt/reduced-rootfs/usr/sbin/$(basename $f) && rm $f
+done
+
+# update dynamic linker cache
+${TARGET}-chroot ldconfig -r /mnt/reduced-rootfs

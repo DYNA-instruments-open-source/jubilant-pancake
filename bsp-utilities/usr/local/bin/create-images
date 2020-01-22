@@ -1,0 +1,6 @@
+#!/bin/bash
+
+/usr/local/bin/create-reduced-rootfs && \
+mkfs.ubifs -q -r /mnt/reduced-rootfs -m 2048 -e 126976 -c 4000 -o /mnt/images/root-ubifs.img && \
+cp /usr/${TARGET}/usr/src/build/arch/arm/boot/{zImage,dts/imx6ull-colibri-viola-v1.dtb,dts/imx6ull-colibri-dynavel-v4-0.dtb} /mnt/images/ && \
+ubinize -o /mnt/images/ubi-flash.img -p 128KiB -m 2048 /mnt/images/ubiconfig.ini 

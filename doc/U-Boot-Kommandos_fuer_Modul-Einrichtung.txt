@@ -1,0 +1,55 @@
+U-Boot-Komandos:
+
+UBI-Partition aktivieren:
+ubi part ubi
+
+ENV-Var ubiboot:
+run setup; setenv bootargs ${defargs} ${ubiargs} ${setupargs} ${vidargs}; echo Booting from NAND...; ubi part ubi &&ubi read ${kernel_addr_r} kernel && ubi read ${fdt_addr_r} dtb && run fdt_fixup && bootz ${kernel_addr_r} - ${fdt_addr_r}
+
+make UBIFS und UBI-Image:
+mkfs.ubifs -m 2048 -e 126976 -c 4228 -o /mnt/images/ubifs.img -r /mnt/reduced-rootfs/
+
+imx6ull-colibri-eval-v3.ini:
+[kernel]
+mode=ubi
+image=/mnt/gentoo/boot/kernel
+vol_id=0
+vol_size=8MiB
+vol_type=static
+vol_name=kernel
+
+[dtb]
+mode=ubi
+image=/mnt/gentoo/boot/dtbs/imx6ull-colibri-eval-v3.dtb
+vol_id=1
+vol_size=248KiB
+vol_type=static
+vol_name=dtb
+
+[m4firmware]
+mode=ubi
+image=/dev/null
+vol_id=2
+vol_size=992KiB
+vol_type=static
+vol_name=m4firmware
+
+[rootfs-volume]
+mode=ubi
+image=rootfs.img
+vol_id=3
+vol_size=220MiB
+vol_type=dynamic
+vol_name=rootfs
+vol_flags=autoresize
+
+
+Kernel und DTB einzeln auf Modul-Flash übertragen wenn SD-Karte läuft:
+ubiattach -m 5
+ubiupdatevol /dev/ubi0_0 /boot/kernel
+ubiupdatevol /dev/ubi0_1 /boot/dtbs/imx6ull-colibri-eval-v3.dtb
+upiupdatevol /dev/ubi0_3 /tmp/ubifs.img
+
+
+
+

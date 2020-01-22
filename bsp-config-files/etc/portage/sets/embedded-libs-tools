@@ -1,0 +1,8 @@
+sys-fs/mtd-utils
+dev-embedded/u-boot-tools
+dev-libs/libgpiod
+dev-embedded/stm32flash
+app-misc/evtest
+dev-embedded/urjtag
+sys-apps/can-utils
+app-misc/triggerhappy

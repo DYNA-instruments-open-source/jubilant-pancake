@@ -1,0 +1,19 @@
+Index: linux/arch/arm/boot/dts/imx6ull.dtsi
+===================================================================
+--- linux.orig/arch/arm/boot/dts/imx6ull.dtsi
++++ linux/arch/arm/boot/dts/imx6ull.dtsi
+@@ -54,6 +54,14 @@
+ 				clock-names = "ipg", "per";
+ 				status = "disabled";
+ 			};
++
++			rngb: rngb@2284000 {
++				compatible = "fsl,imx6ull-rngb",
++                                             "fsl,imx25-rngb";
++                                reg = <0x2284000 0x4000>;
++                                interrupts = <GIC_SPI 6 IRQ_TYPE_LEVEL_HIGH>;
++                                status = "disabled";
++			};
+ 		};
+ 	};
+ };

@@ -1,0 +1,12 @@
+modprobe imx-sdma
+modprobe spi-imx
+modprobe spidev
+modprobe i2c-imx
+dmesg
+gpioinfo
+
+
+tftp -g -r imx6ull-colibri-viola-v1.dtb dyna180
+ubiupdatevol /dev/ubi0_1 imx6ull-colibri-viola-v1.dtb 
+
+

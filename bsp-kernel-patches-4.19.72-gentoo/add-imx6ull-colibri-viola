@@ -1,0 +1,275 @@
+Index: linux/arch/arm/boot/dts/imx6ull-colibri-viola-v1.dts
+===================================================================
+--- /dev/null
++++ linux/arch/arm/boot/dts/imx6ull-colibri-viola-v1.dts
+@@ -0,0 +1,14 @@
++// SPDX-License-Identifier: (GPL-2.0 OR MIT)
++/*
++ * Copyright 2019 Johannes Lode
++ */
++
++/dts-v1/;
++
++#include "imx6ull-colibri-nonwifi.dtsi"
++#include "imx6ull-colibri-viola-v1.dtsi"
++
++/ {
++	model = "Toradex Colibri iMX6ULL 512MB on Viola Board V1.x";
++	compatible = "toradex,colibri-imx6ull-eval", "fsl,imx6ull";
++};
+Index: linux/arch/arm/boot/dts/imx6ull-colibri-viola-v1.dtsi
+===================================================================
+--- /dev/null
++++ linux/arch/arm/boot/dts/imx6ull-colibri-viola-v1.dtsi
+@@ -0,0 +1,227 @@
++// SPDX-License-Identifier: (GPL-2.0 OR MIT)
++/*
++ * Copyright 2019 Johannes Lode
++ */
++
++/ {
++	chosen {
++		stdout-path = "serial0:115200n8";
++	};
++
++/*
++	panel: panel {
++		compatible = "edt,et057090dhu";
++		backlight = <&bl>;
++		power-supply = <&reg_3v3>;
++
++		port {
++			panel_in: endpoint {
++				remote-endpoint = <&lcdif_out>;
++			};
++		};
++	};
++*/
++
++	reg_3v3: regulator-3v3 {
++		compatible = "regulator-fixed";
++		regulator-name = "3.3V";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++	};
++
++	reg_5v0: regulator-5v0 {
++		compatible = "regulator-fixed";
++		regulator-name = "5V";
++		regulator-min-microvolt = <5000000>;
++		regulator-max-microvolt = <5000000>;
++	};
++
++	reg_usbh_vbus: regulator-usbh-vbus {
++		compatible = "regulator-fixed";
++		pinctrl-names = "default";
++		pinctrl-0 = <&pinctrl_usbh_reg>;
++		regulator-name = "VCC_USB[1-4]";
++		regulator-min-microvolt = <5000000>;
++		regulator-max-microvolt = <5000000>;
++		gpio = <&gpio1 2 GPIO_ACTIVE_LOW>;
++		vin-supply = <&reg_5v0>;
++	};
++};
++
++/delete-node/ &pinctrl_lcdif_dat;
++
++&pinctrl_ecspi1_cs {
++	fsl,pins = <
++		 MX6UL_PAD_LCD_DATA21__GPIO3_IO26 	0x000a0
++		 MX6UL_PAD_LCD_DATA05__GPIO3_IO10 	0x000a0
++        >;
++
++};
++
++&rngb {
++	status = "okay";
++};
++
++&adc1 {
++	status = "okay";
++};
++
++&bl {
++	brightness-levels = <0 4 8 16 32 64 128 255>;
++	default-brightness-level = <6>;
++	power-supply = <&reg_3v3>;
++	pwms = <&pwm4 0 5000000 1>;
++	status = "disabled";
++};
++
++&ecspi1 {
++	dmas = <&sdma 3 7 1>, <&sdma 4 7 2>;
++	dma-names = "rx", "tx";
++	cs-gpios = <&gpio3 26 GPIO_ACTIVE_HIGH &gpio3 10 GPIO_ACTIVE_HIGH>;
++	status = "okay";
++
++	spidev0: spidev@0 {
++		compatible = "dynainstruments,application-specific";
++		reg = <0>;
++		spi-max-frequency = <14975000>;
++		/* SPI Mode 0 */
++		// spi-cpol;
++		// spi-cpha;
++		status = "okay";
++	};
++
++	spidev1: spidev@1 {
++		compatible = "dynainstruments,application-specific";
++		reg = <1>;
++		spi-max-frequency = <20000000>;
++		/* SPI Mode 3 */
++		spi-cpol;
++		spi-cpha;
++		status = "okay";
++	};
++};
++
++&sdma {
++	gpr = <&gpr>;
++	/* SDMA events remap for I2C */
++	fsl,sdma-event-remap = <0 1 1>;
++};
++
++&i2c1 {
++	dma-names = "rx","tx";
++	dmas = <&sdma 7 7 1>, <&sdma 7 7 1>;
++	status = "okay";
++
++	/* M41T0M6 real time clock on carrier board */
++	m41t0m6: rtc@68 {
++		compatible = "st,m41t0";
++		reg = <0x68>;
++	};
++};
++
++/delete-node/ &lcdif;
++
++/* 
++&lcdif {
++	status = "disabled";
++
++	port {
++		lcdif_out: endpoint {
++			remote-endpoint = <&panel_in>;
++		};
++	};
++};
++*/
++
++/* PWM <A> */
++&pwm4 {
++	status = "okay";
++};
++
++/* PWM <B> */
++&pwm5 {
++	status = "okay";
++};
++
++/* PWM <C> */
++&pwm6 {
++	status = "okay";
++};
++
++/* PWM <D> */
++&pwm7 {
++	status = "okay";
++};
++
++&uart1 {
++	status = "okay";
++};
++
++&uart2 {
++	status = "okay";
++};
++
++&uart5 {
++	status = "okay";
++};
++
++&usbotg1 {
++	status = "okay";
++};
++
++&usbotg2 {
++	vbus-supply = <&reg_usbh_vbus>;
++	status = "okay";
++};
++
++&usdhc1 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_usdhc1 &pinctrl_snvs_usdhc1_cd>;
++	no-1-8-v;
++	cd-gpios = <&gpio5 0 GPIO_ACTIVE_LOW>;
++	disable-wp;
++	wakeup-source;
++	keep-power-in-suspend;
++	vmmc-supply = <&reg_3v3>;
++	status = "disabled";
++};
++
++&gpio1 {
++	gpio-line-names = "", "", "", "", "", "", "", "",
++                          "", "", "", "", "", "", "", "",
++                          "", "", "", "", "", "", "", "",
++                          "X9.8", "", "", "", "", "", "", "";
++};
++
++&gpio2 {
++	gpio-line-names = "X9.17,CAN-TX", "X9.18,CAN-RX", "", "", "", "", "", "",
++                          "", "", "", "", "", "", "", "",
++                          "", "", "", "", "", "", "", "",
++                          "", "", "", "", "", "", "", "";
++};
++
++&gpio3 {
++	gpio-line-names = "", "", "", "", "", "", "", "",
++                          "", "", "", "", "", "", "", "",
++                          "", "", "", "", "", "", "", "",
++                          "", "", "", "", "", "", "", "";
++};
++
++&gpio4 {
++	gpio-line-names = "", "", "", "", "", "", "", "",
++                          "", "", "", "", "", "", "X9.10", "",
++                          "", "", "", "", "", "X9.12", "X9.11", "X9.15",
++                          "X9.13", "", "X9.9", "X9.14", "", "", "", "";
++};
++
++&gpio5 {
++	gpio-line-names = "", "X9.16", "", "", "", "", "", "",
++                          "", "", "", "", "", "", "", "",
++                          "", "", "", "", "", "", "", "",
++                          "", "", "", "", "", "", "", "";
++};
++
++&can1 {
++	xceiver-supply = <&reg_5v0>;
++	status = "okay";
++};
+Index: linux/arch/arm/boot/dts/Makefile
+===================================================================
+--- linux.orig/arch/arm/boot/dts/Makefile
++++ linux/arch/arm/boot/dts/Makefile
+@@ -559,6 +559,7 @@ dtb-$(CONFIG_SOC_IMX6UL) += \
+ 	imx6ul-tx6ul-mainboard.dtb \
+ 	imx6ull-14x14-evk.dtb \
+ 	imx6ull-colibri-eval-v3.dtb \
++	imx6ull-colibri-viola-v1.dtb \
+ 	imx6ull-colibri-wifi-eval-v3.dtb
+ dtb-$(CONFIG_SOC_IMX7D) += \
+ 	imx7d-cl-som-imx7.dtb \
+Index: linux/drivers/spi/spidev.c
+===================================================================
+--- linux.orig/drivers/spi/spidev.c
++++ linux/drivers/spi/spidev.c
+@@ -669,6 +669,7 @@ static const struct of_device_id spidev_
+ 	{ .compatible = "lineartechnology,ltc2488" },
+ 	{ .compatible = "ge,achc" },
+ 	{ .compatible = "semtech,sx1301" },
++	{ .compatible = "dynainstruments,application-specific" },
+ 	{},
+ };
+ MODULE_DEVICE_TABLE(of, spidev_dt_ids);

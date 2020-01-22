@@ -1,0 +1,3 @@
+net-firewall/iptables conntrack nftables netlink pcap
+sys-apps/iproute2 elf iptables
+sys-apps/busybox savedconfig

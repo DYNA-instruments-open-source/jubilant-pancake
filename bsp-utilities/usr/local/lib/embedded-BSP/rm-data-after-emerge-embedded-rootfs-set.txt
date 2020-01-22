@@ -1,0 +1,15 @@
+usr/bin/qemu-arm
+var/lib/gentoo/news/**
+var/db/pkg/**
+usr/share/man/
+usr/share/doc/
+usr/include/
+usr/share/locale/
+usr/share/info/
+usr/share/i18n/
+usr/share/gtk-doc/
+usr/lib*/gconv/
+usr/lib/systemd/
+usr/lib/gcc/*/*/libasan*
+usr/lib/gcc/*/*/libubsan*
+lib/systemd/

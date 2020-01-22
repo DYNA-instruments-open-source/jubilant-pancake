@@ -1,0 +1,7 @@
+=net-dialup/picocom-3.1 ~arm
+=dev-embedded/stm32flash-0.5 **
+# =dev-embedded/urjtag-9999 **
+=dev-libs/libgpiod-1.4.1 ~arm
+sys-apps/can-utils ~arm
+app-misc/triggerhappy **
+dev-embedded/urjtag **

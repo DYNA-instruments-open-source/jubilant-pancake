@@ -1,0 +1,701 @@
+Index: linux/arch/arm/boot/dts/Makefile
+===================================================================
+--- linux.orig/arch/arm/boot/dts/Makefile
++++ linux/arch/arm/boot/dts/Makefile
+@@ -560,6 +560,7 @@ dtb-$(CONFIG_SOC_IMX6UL) += \
+ 	imx6ull-14x14-evk.dtb \
+ 	imx6ull-colibri-eval-v3.dtb \
+ 	imx6ull-colibri-viola-v1.dtb \
++	imx6ull-colibri-dynavel-v4-0.dtb \
+ 	imx6ull-colibri-wifi-eval-v3.dtb
+ dtb-$(CONFIG_SOC_IMX7D) += \
+ 	imx7d-cl-som-imx7.dtb \
+Index: linux/arch/arm/boot/dts/imx6ull-colibri-dynavel-v4-0.dts
+===================================================================
+--- /dev/null
++++ linux/arch/arm/boot/dts/imx6ull-colibri-dynavel-v4-0.dts
+@@ -0,0 +1,160 @@
++// SPDX-License-Identifier: (GPL-2.0 OR MIT)
++/*
++ * Copyright 2019 Johannes Lode
++ */
++
++/dts-v1/;
++
++#include "imx6ull-colibri-ecog45adapter-v1-1.dtsi"
++
++/ {
++	model = "Toradex Colibri iMX6ULL 512MB on DYNAvel 4-0 via ECOG45-Adapter V1-1";
++	compatible = "dynainstruments,imx6ull-colibri-ecog45adap11-dynavel40", "toradex,colibri-imx6ull", "fsl,imx6ull";
++};
++
++// SPI-Interface for DAC and ADC
++
++&ecspi1 {
++        dmas = <&sdma 3 7 1>, <&sdma 4 7 2>;
++        dma-names = "rx", "tx";
++        pinctrl-names = "default";
++        pinctrl-0 = <&pinctrl_ecspi1 &pinctrl_ecspi1_cs0 &pinctrl_ecspi1_cs1>;
++        cs-gpios = <&gpio3 26 GPIO_ACTIVE_HIGH &gpio3 10 GPIO_ACTIVE_HIGH>;
++        status = "okay";
++
++        spidev0: spidev@0 {
++                compatible = "dynainstruments,application-specific";
++                reg = <0>;
++                spi-max-frequency = <14975000>;
++                /* SPI Mode 0 */
++                // spi-cpol;
++                // spi-cpha;
++                status = "okay";
++        };
++
++        spidev1: spidev@1 {
++                compatible = "dynainstruments,application-specific";
++                reg = <1>;
++                spi-max-frequency = <20000000>;
++                /* SPI Mode 3 */
++                spi-cpol;
++                spi-cpha;
++                status = "okay";
++        };
++};
++
++// PWM output for 0..20 mA
++/* PWM <B> */
++&pwm5 {
++	status = "okay";
++};
++
++// UART on extension connector
++/* UART <B> */
++&uart2 {
++    status = "okay";
++};
++
++// UART for the coprocessor
++/* UART <C> */
++&uart5 {
++    status = "okay";
++    fsl,dte-mode;
++    // /delete-property/fsl,dte-mode;
++};
++
++
++
++/**
++ * external bus interface with SJA1000
++ */
++// bus CS configuration and CAN controller configuration
++&weim {
++    status = "okay";
++
++    /* weim memory map: 64MB on CS0, 32MB on CS1, 32MB on CS2, 0MB on CS3 */
++    ranges = <0 0 0x50000000 0x04000000
++              1 0 0x54000000 0x02000000
++              2 0 0x56000000 0x02000000>;
++    fsl,weim-cs-gpr = <&gpr>;
++    clocks = <&clks IMX6UL_CLK_CKO2>;   // use CLKO2 as the clock source, so it gets enabled and locked by the WEIM
++    assigned-clocks = <&clks IMX6UL_CLK_EIM_SLOW_PODF>, <&clks IMX6UL_CLK_EIM_SLOW_SEL>, <&clks IMX6UL_CLK_CKO2_PODF>, <&clks IMX6UL_CLK_CKO2_SEL>, <&clks IMX6UL_CLK_EIM>;
++    assigned-clock-parents = <0>, <&clks IMX6UL_CLK_AXI>, <0>, <&clks IMX6UL_CLK_EIM>;
++    assigned-clock-rates = <66000000>, <0>, <66000000>; // 132 MHz would be too much for the original design, which was for 100 MHz, and it does not withstand the higher frequencies
++
++    can3: sja1000@2,0 {
++
++        fsl,weim-cs-timing = <0x022c0081 0x00000000
++                              0x0c080000 0x00000000
++                              0x89000000 0x00000000>;
++
++        compatible = "nxp,sja1000";
++        reg = <2 0 0x80>;
++        reg-io-width = <1>;
++        interrupt-parent = <&gpio5>;
++        interrupts = <1 IRQ_TYPE_LEVEL_LOW>;
++        nxp,external-clock-frequency = <8000000>;
++        nxp,tx-output-mode = <1>; // normal output on TX0 and inverted on TX1
++        nxp,tx-output-config = <0x02>; // normal open-drain mode, TX1 off/floating
++        // nxp,tx-output-mode = <3>; // normalt output on TX0, bit clock on TX1
++        // nxp,tx-output-config = <0x36>; // push-pull mode on both outputs
++        // nxp,clock-out-frequency = <4000000>; // comment or set zero if not in HW test
++        // nxp,no-comparator-bypass; // bypass comparator by default, as we have an external PHY
++
++		xceiver-supply = <&reg_5v0>;
++		status = "okay";
++
++		can-transceiver {
++		    max-bitrate = <1100000>;
++		};
++	};
++};
++
++&gpio1 {
++        gpio-line-names = "CPLD_TDO", "CPLD_TDI", "X4-63", "GPIOx_1", "X4-65", "X4-64", "", "",
++                          "CPLD_TCK", "CPLD_TMS", "X4-72", "X4-66", "X3-9", "X4-29", "X4-59", "SP_SWRTS",
++                          "X4-40", "X4-39", "GPIOx_0", "AD5415_CLR", "RXD0", "TXD0", "CTS0", "RTS0",
++                          "uc_BOOT1", "X4-57", "X4-58", "ADDR_CODE_2D", "GPIOx_4", "GPIOx_3", "", "";
++};
++
++&gpio2 {
++        gpio-line-names = "ADDR_CODE_1C", "ANA2_SW2", "uc_BOOT0", "", "X4-30", "SP_SWCTS", "ANA2_SW4", "X4-68",
++                          "", "", "", "", "", "", "", "",
++                          "X4-38", "GPIOx_5", "ADDR_CODE_1A", "ADDR_CODE_2A", "ADDR_CODE_2B", "ADDR_CODE_2C", "", "",
++                          "", "", "", "", "", "", "", "";
++};
++
++&gpio3 {
++        gpio-line-names = "X3-22", "", "ADDR_CODE_1D", "ANA2_SW1", "", "ANA1_SW1", "X4-48", "ADDR_CODE_1B",
++                          "X4-23", "ANA1_SW3", "X4-24", "", "X4-26", "X3-26", "X3-25", "X3-28",
++                          "X3-27", "X3-30", "X3-29", "X3-32", "X3-31", "ANA1_SW2", "ANA1_SW4", "AD5415_LDAC",
++                          "GPIOx_2", "X4-22", "X4-21", "X4-19", "X4-20", "", "", "";
++};
++
++&gpio4 {
++        gpio-line-names = "", "", "", "", "", "", "", "",
++                          "", "", "", "", "", "", "uc_RST", "",
++                          "X3-11", "", "X3-65", "X3-63", "ANA2_SW3", "", "", "X3-44",
++                          "X3-43", "X3-46", "X3-45", "X3-48", "X3-47", "", "", "";
++};
++
++&gpio5 {
++        gpio-line-names = "", "X4-31", "", "", "", "", "", "",
++                          "", "", "", "", "", "", "", "",
++                          "", "", "", "", "", "", "", "",
++                          "", "", "", "", "", "", "", "";
++};
++
++&iomuxc {
++	pinctrl-names = "default";
++	pinctrl-0 = <
++	             &pinctrl_unshared_gpio
++	             &pinctrl_ecog45gpio1
++	             &pinctrl_ecog45gpio2
++	             &pinctrl_ecog45gpio3
++	             &pinctrl_ecog45gpio4
++	             &pinctrl_ecog45gpio5
++	             &pinctrl_ecog45gpio98
++	            >;
++
++};
+Index: linux/arch/arm/boot/dts/imx6ull-colibri-ecog45adapter-v1-1.dtsi
+===================================================================
+--- /dev/null
++++ linux/arch/arm/boot/dts/imx6ull-colibri-ecog45adapter-v1-1.dtsi
+@@ -0,0 +1,497 @@
++// SPDX-License-Identifier: (GPL-2.0 OR MIT)
++/*
++ * Copyright 2019 Johannes Lode
++ */
++
++#include "imx6ull-colibri.dtsi"
++
++/ {
++	model = "Toradex Colibri iMX6ULL 512MB on ECOG45-Adapter V1-1";
++	compatible = "dynainstruments,imx6ull-colibri-ecog45adap11", "toradex,colibri-imx6ull", "fsl,imx6ull";
++
++	memory@80000000 {
++		reg = <0x80000000 0x10000000>;
++	};
++
++	chosen {
++		stdout-path = "serial0:115200n8";
++	};
++
++	reg_3v3: regulator-3v3 {
++		compatible = "regulator-fixed";
++		regulator-name = "3.3V";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++	};
++
++	reg_5v0: regulator-5v0 {
++		compatible = "regulator-fixed";
++		regulator-name = "5V";
++		regulator-min-microvolt = <5000000>;
++		regulator-max-microvolt = <5000000>;
++	};
++
++};
++
++/delete-node/ &pinctrl_lcdif_dat;
++/delete-node/ &bl;
++/delete-node/ &lcdif;
++/delete-node/ &usbotg1;
++/delete-node/ &usbotg2;
++
++&rngb {
++        status = "okay";
++};
++
++&iomuxc {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_unshared_gpio>;
++
++    /* PWM outputs */
++	pinctrl_pwm4: pwm4-grp {
++		fsl,pins = <
++			MX6UL_PAD_LCD_DATA03__PWM4_OUT	0x00079 /* SODIMM 58 */
++		>;
++	};
++
++	pinctrl_pwm5: pwm5-grp {
++		fsl,pins = <
++			MX6UL_PAD_ENET1_TX_DATA1__PWM5_OUT	0x00079 /* SODIMM 73 */
++		>;
++	};
++
++	pinctrl_pwm6: pwm6-grp {
++		fsl,pins = <
++			MX6UL_PAD_ENET1_TX_EN__PWM6_OUT	0x00079 /* SODIMM 30 */
++		>;
++	};
++
++    /* UART configurations */
++	pinctrl_uart1: uart1-grp {
++		fsl,pins = <
++			MX6UL_PAD_UART1_TX_DATA__UART1_DTE_RX	0x1f0b1 /* SODIMM 33 */
++			MX6UL_PAD_UART1_RX_DATA__UART1_DTE_TX	0x1f0b1 /* SODIMM 35 */
++		>;
++	};
++
++	pinctrl_uart2: uart2-grp {
++		fsl,pins = <
++			MX6UL_PAD_UART2_TX_DATA__UART2_DTE_RX	0x1f0b1 /* SODIMM 36 */
++			MX6UL_PAD_UART2_RX_DATA__UART2_DTE_TX	0x1f0b1 /* SODIMM 38 */
++			MX6UL_PAD_UART2_CTS_B__UART2_DTE_RTS	0x1f0b1 /* SODIMM 34 */
++			MX6UL_PAD_UART2_RTS_B__UART2_DTE_CTS	0x1f0b1 /* SODIMM 32 */
++		>;
++	};
++
++	pinctrl_uart5: uart5-grp {
++		fsl,pins = <
++			MX6UL_PAD_GPIO1_IO04__UART5_DTE_RX	0x1f0b1 /* SODIMM 19 */
++			MX6UL_PAD_GPIO1_IO05__UART5_DTE_TX	0x1f0b1 /* SODIMM 21 */
++		>;
++	};
++
++	/* SPI configurations */
++	pinctrl_ecspi1_cs0: ecspi1-cs0-grp {
++        fsl,pins = <
++                 MX6UL_PAD_LCD_DATA21__GPIO3_IO26       0x000a0 /* SODIMM 86 */
++        >;
++	};
++
++	pinctrl_ecspi1_cs1: ecspi1-cs1-grp {
++        fsl,pins = <
++                 MX6UL_PAD_LCD_DATA05__GPIO3_IO10       0x000a0 /* SODIMM 72 */
++        >;
++	};
++
++    /* part R12 is populated, active configuration */
++	pinctrl_ecspi1_cs2: ecspi1-cs2-grp {
++        fsl,pins = <
++                 MX6UL_PAD_LCD_DATA03__GPIO3_IO08       0x000a0 /* SODIMM 58 */
++        >;
++	};
++
++    // inactive due to not populated part R13
++	// pinctrl_ecspi1_cs2: ecspi1-cs2-grp {
++    //     fsl,pins = <
++    //              MX6UL_PAD_LCD_DATA06__GPIO3_IO11       0x000a0 /* SODIMM 80 */
++    //     >;
++	// };
++
++	pinctrl_ecspi1_cs3: ecspi1-cs3-grp {
++        fsl,pins = <
++                 MX6UL_PAD_LCD_DATA07__GPIO3_IO12       0x000a0 /* SODIMM 46 */
++        >;
++	};
++
++	/* SD-Card slot */
++	pinctrl_usdhc1_cd: usdhc1-cd-grp {
++		fsl,pins = <
++			MX6UL_PAD_GPIO1_IO03__GPIO1_IO03	0x1b0b0 /* SODIMM 89 */
++		>;
++	};
++
++	pinctrl_weim_8D: weim-8data-grp {
++		fsl,pins = <
++			MX6UL_PAD_LCD_DATA08__EIM_DATA00   0x000b1 /* X1-26, D0_CPLD, SODIMM 62 */
++			MX6UL_PAD_LCD_DATA09__EIM_DATA01   0x000b1 /* X1-25, D1_CPLD, SODIMM 48 */
++			MX6UL_PAD_LCD_DATA10__EIM_DATA02   0x000b1 /* X1-28, D2_CPLD, SODIMM 74 */
++			MX6UL_PAD_LCD_DATA11__EIM_DATA03   0x000b1 /* X1-27, D3_CPLD, SODIMM 50 */
++			MX6UL_PAD_LCD_DATA12__EIM_DATA04   0x000b1 /* X1-30, D4_CPLD, SODIMM 52 */
++			MX6UL_PAD_LCD_DATA13__EIM_DATA05   0x000b1 /* X1-29, D5_CPLD, SODIMM 54 */
++			MX6UL_PAD_LCD_DATA14__EIM_DATA06   0x000b1 /* X1-32, D6_CPLD, SODIMM 66 */
++			MX6UL_PAD_LCD_DATA15__EIM_DATA07   0x000b1 /* X1-31, D7_CPLD, SODIMM 64 */
++		>;
++	};
++
++	pinctrl_weim_8A: weim-8addr-grp {
++		fsl,pins = <
++			MX6UL_PAD_CSI_DATA00__EIM_AD00     0x000b1 /* X1-42, A0_CPLD, SODIMM 101 */
++			MX6UL_PAD_CSI_DATA01__EIM_AD01     0x000b1 /* X1-41, A1_CPLD, SODIMM 103 */
++			MX6UL_PAD_CSI_DATA02__EIM_AD02     0x000b1 /* X1-44, A2_CPLD, SODIMM 79 */
++			MX6UL_PAD_CSI_DATA03__EIM_AD03     0x000b1 /* X1-43, A3_CPLD, SODIMM 97 */
++			MX6UL_PAD_CSI_DATA04__EIM_AD04     0x000b1 /* X1-46, A4_CPLD, SODIMM 69 */
++			MX6UL_PAD_CSI_DATA05__EIM_AD05     0x000b1 /* X1-45, A5_CPLD, SODIMM 98 */
++			MX6UL_PAD_CSI_DATA06__EIM_AD06     0x000b1 /* X1-48, A6_CPLD, SODIMM 85 */
++			MX6UL_PAD_CSI_DATA07__EIM_AD07     0x000b1 /* X1-47, A7_CPLD, SODIMM 65 */
++		>;
++	};
++
++	pinctrl_weim_async_bus: weim-async-ctrl-grp {
++		fsl,pins = <
++			MX6UL_PAD_JTAG_TDO__CCM_CLKO2      0x000b1 /* X1-9,  MCK_CPLD, SODIMM 23 */
++			MX6UL_PAD_NAND_DQS__GPIO4_IO16     0x000b1 /* X1-11, WAITN_CPLD, SODIMM 28, configured as GPIO, as the interface shall be asynchronous, else MX6UL_PAD_NAND_DQS__EIM_WAIT */
++			MX6UL_PAD_CSI_VSYNC__EIM_RW        0x000b1 /* X1-63, WRN_CPLD/RW, SODIMM 81 */
++			MX6UL_PAD_CSI_PIXCLK__EIM_OE       0x000b1 /* X1-65, RDN_CPLD/OE, SODIMM 96 */
++		>;
++	};
++
++	pinctrl_weim_cs0: weim-cs0-grp {
++		fsl,pins = <
++			MX6UL_PAD_CSI_MCLK__EIM_CS0_B      0x000b1 /* X1-22, CSN_CPLD, SODIMM 75, from #CS0 */
++		>;
++	};
++
++	pinctrl_weim_cs2: weim-cs2-grp {
++		fsl,pins = <
++			MX6UL_PAD_LCD_CLK__EIM_CS2_B       0x000b1 /* X1-22, CSN_CPLD, SODIMM 56, from #CS2 */
++		>;
++	};
++
++	pinctrl_weim_cs3: weim-cs3-grp {
++		fsl,pins = <
++			MX6UL_PAD_LCD_ENABLE__EIM_CS3_B    0x000b1 /* X1-22, CSN_CPLD, SODIMM 44, from #CS3 */
++		>;
++	};
++
++	/* GPIO configurations alternate GPIO function for configuration above */
++	pinctrl_ecog45gpio121: ecog45x2-23 {
++		fsl,pins = <
++			MX6UL_PAD_LCD_DATA03__GPIO3_IO08	0x1f0b0 /* SODIMM 58 */
++		>;
++	};
++
++	pinctrl_ecog45gpio122: ecog45x2-30 {
++		fsl,pins = <
++			MX6UL_PAD_ENET1_TX_DATA1__GPIO2_IO04	0x1f0b0 /* SODIMM 73 */
++		>;
++	};
++
++	pinctrl_ecog45gpio123: ecog45x2-26 {
++        fsl,pins = <
++            MX6UL_PAD_LCD_DATA07__GPIO3_IO12       0x1f0b0 /* SODIMM 46 */
++        >;
++	};
++
++	pinctrl_ecog45gpio98: ecog45x2-60 {
++		fsl,pins = <
++			MX6UL_PAD_ENET1_TX_EN__GPIO2_IO05	0x1f0b0 /* SODIMM 30 */
++		>;
++	};
++
++	pinctrl_ecog45gpio38: ecog45x2-64 {
++		fsl,pins = <
++			MX6UL_PAD_GPIO1_IO05__GPIO1_IO05	0x1f0b0 /* SODIMM 21 */
++		>;
++	};
++
++	pinctrl_ecog45gpio39: ecog45x2-65 {
++		fsl,pins = <
++			MX6UL_PAD_GPIO1_IO04__GPIO1_IO04	0x1f0b0 /* SODIMM 19 */
++		>;
++	};
++
++	pinctrl_ecog45gpio20: ecog45x2-33 {
++		fsl,pins = <
++			MX6UL_PAD_UART4_RX_DATA__GPIO1_IO29 0x1f0b0 /* SODIMM 194 */
++		>;
++	};
++
++	pinctrl_ecog45gpio21: ecog45x2-36 {
++		fsl,pins = <
++			MX6UL_PAD_UART4_TX_DATA__GPIO1_IO28 0x1f0b0 /* SODIMM 196 */
++		>;
++	};
++
++	pinctrl_ecog45gpio0: ecog45x2-35 {
++		fsl,pins = <
++			MX6UL_PAD_SD1_CLK__GPIO2_IO17 0x1f0b0 /* SODIMM 47 */
++		>;
++	};
++
++	pinctrl_ecog45gpio1: ecog45x2-38 {
++		fsl,pins = <
++			MX6UL_PAD_SD1_CMD__GPIO2_IO16 0x1f0b0 /* SODIMM 190 */
++		>;
++	};
++
++	pinctrl_ecog45gpio2: ecog45x2-37 {
++		fsl,pins = <
++			MX6UL_PAD_SD1_DATA0__GPIO2_IO18 0x1f0b0 /* SODIMM 192 */
++		>;
++	};
++
++	pinctrl_ecog45gpio3: ecog45x2-43 {
++		fsl,pins = <
++			MX6UL_PAD_SD1_DATA1__GPIO2_IO19 0x1f0b0 /* SODIMM 49 */
++		>;
++	};
++
++	pinctrl_ecog45gpio4: ecog45x2-46 {
++		fsl,pins = <
++			MX6UL_PAD_SD1_DATA2__GPIO2_IO20 0x1f0b0 /* SODIMM 51 */
++		>;
++	};
++
++	pinctrl_ecog45gpio5: ecog45x2-45 {
++		fsl,pins = <
++			MX6UL_PAD_SD1_DATA3__GPIO2_IO21 0x1f0b0 /* SODIMM 53 */
++		>;
++	};
++
++	pinctrl_ecog45gpio106: ecog45x2-32 {
++		fsl,pins = <
++			MX6UL_PAD_GPIO1_IO03__GPIO1_IO03 0x1f0b0 /* SODIMM 89 */
++		>;
++	};
++
++    /* GPIO configuration for generic/unshared GPIO pins */
++	pinctrl_unshared_gpio: ecog45-unshared-gpio {
++		fsl,pins = <
++			MX6UL_PAD_UART1_CTS_B__GPIO1_IO18     0x1f0b0 /* GPIO100, X2-25, SODIMM 25 */
++			MX6UL_PAD_UART1_RTS_B__GPIO1_IO19     0x1f0b0 /* GPIO101, X2-27, SODIMM 27 */
++			MX6UL_PAD_LCD_DATA18__GPIO3_IO23      0x1f0b0 /* GPIO85,  X2-28, SODIMM 29 */
++			MX6UL_PAD_JTAG_TDI__GPIO1_IO13        0x1f0b0 /* GPIO102, X2-29, SODIMM 31 */
++			MX6UL_PAD_LCD_DATA19__GPIO3_IO24      0x1f0b0 /* GPIO107, X2-34, SODIMM 37 */
++			MX6UL_PAD_ENET1_RX_DATA0__GPIO2_IO00  0x1f0b0 /* GPIO82,  X2-41, SODIMM 55 */
++			MX6UL_PAD_LCD_DATA02__GPIO3_IO07      0x1f0b0 /* GPIO86,  X2-42, SODIMM 60 */
++			MX6UL_PAD_LCD_HSYNC__GPIO3_IO02       0x1f0b0 /* GPIO83,  X2-44, SODIMM 68 */
++			MX6UL_PAD_UART3_RTS_B__GPIO1_IO27     0x1f0b0 /* GPIO52,  X2-47, SODIMM 186 */
++			MX6UL_PAD_LCD_DATA01__GPIO3_IO06      0x1f0b0 /* GPIO53,  X2-48, SODIMM 70 */
++			MX6UL_PAD_LCD_DATA16__GPIO3_IO21      0x1f0b0 /* GPIO54,  X2-49, SODIMM 57 */
++			MX6UL_PAD_LCD_DATA00__GPIO3_IO05      0x1f0b0 /* GPIO55,  X2-50, SODIMM 76 */
++			MX6UL_PAD_LCD_DATA17__GPIO3_IO22      0x1f0b0 /* GPIO104, X2-51, SODIMM 61 */
++			MX6UL_PAD_LCD_DATA04__GPIO3_IO09      0x1f0b0 /* GPIO113, X2-52, SODIMM 78 */
++			MX6UL_PAD_ENET1_RX_DATA1__GPIO2_IO01  0x1f0b0 /* GPIO105, X2-53, SODIMM 63 */
++			MX6UL_PAD_LCD_VSYNC__GPIO3_IO03       0x1f0b0 /* GPIO124, X2-54, SODIMM 82 */
++			MX6UL_PAD_ENET1_TX_CLK__GPIO2_IO06    0x1f0b0 /* GPIO56,  X2-55, SODIMM 67 */
++			MX6UL_PAD_CSI_HSYNC__GPIO4_IO20       0x1f0b0 /* GPIO57,  X2-56, SODIMM 94 */
++			MX6UL_PAD_UART3_RX_DATA__GPIO1_IO25   0x1f0b0 /* GPIO58,  X2-57, SODIMM 77 */
++			MX6UL_PAD_UART3_CTS_B__GPIO1_IO26     0x1f0b0 /* GPIO59,  X2-58, SODIMM 100 */
++			MX6UL_PAD_JTAG_TCK__GPIO1_IO14        0x1f0b0 /* GPIO84,  X2-59, SODIMM 99 */
++			MX6UL_PAD_JTAG_TRST_B__GPIO1_IO15     0x1f0b0 /* GPIO36,  X2-62, SODIMM 102 */
++			MX6UL_PAD_GPIO1_IO02__GPIO1_IO02      0x1f0b0 /* GPIO60,  X2-63, SODIMM 129 */
++			MX6UL_PAD_JTAG_TMS__GPIO1_IO11        0x1f0b0 /* GPIO63,  X2-66, SODIMM 71 */
++			MX6UL_PAD_NAND_CE1_B__GPIO4_IO14      0x1f0b0 /* GPIO99,  X2-67, SODIMM 133 */
++			MX6UL_PAD_ENET1_RX_ER__GPIO2_IO07     0x1f0b0 /* GPIO112, X2-68, SODIMM 104 */
++			MX6UL_PAD_UART3_TX_DATA__GPIO1_IO24   0x1f0b0 /* GPIO114, X2-69, SODIMM 135 */
++			MX6UL_PAD_ENET1_RX_EN__GPIO2_IO02     0x1f0b0 /* GPIO110, X2-71, SODIMM 178 */
++			MX6UL_PAD_JTAG_MOD__GPIO1_IO10        0x1f0b0 /* GPIO111, X2-72, SODIMM 106 */
++
++			/* CPLD JTAG pins */
++			MX6UL_PAD_GPIO1_IO09__GPIO1_IO09      0x1f0b0 /* GPIO27,  X1-15, SODIMM 2 */
++			MX6UL_PAD_GPIO1_IO01__GPIO1_IO01      0x1f0b0 /* GPIO29,  X1-16, SODIMM 6 */
++			MX6UL_PAD_GPIO1_IO08__GPIO1_IO08      0x1f0b0 /* GPIO81,  X1-21, SODIMM 4 */
++			MX6UL_PAD_GPIO1_IO00__GPIO1_IO00      0x1f0b0 /* GPIO80,  X1-24, SODIMM 8 */
++		>;
++	};
++};
++
++&iomuxc_snvs {
++    /* WEIM interface for external bus */
++	pinctrl_weim_int: weim-int-grp {
++		fsl,pins = <
++			MX6UL_PAD_SNVS_TAMPER1__GPIO5_IO01 0x000b1 /* SODIMM 45 */
++		>;
++	};
++
++	pinctrl_ecog45gpio103: ecog45x2-31 {
++		fsl,pins = <
++			MX6UL_PAD_SNVS_TAMPER1__GPIO5_IO01 0x1f0b0 /* SODIMM 45 */
++		>;
++	};
++};
++
++/* PWM outputs may be activated by base board */
++/* PWM <A> */
++&pwm4 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_pwm4>;
++	status = "disabled";
++};
++
++/* PWM <B> */
++&pwm5 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_pwm5>;
++	status = "disabled";
++};
++
++/* PWM <C> */
++&pwm6 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_pwm6>;
++    status = "disabled";
++};
++
++/* UART <A> */
++&uart1 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_uart1>;
++	/delete-property/uart-has-rtscts;
++	fsl,dte-mode;
++	status = "okay";
++};
++
++/* UARTs may be activated by base board */
++/* UART <B> */
++&uart2 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_uart2>;
++	uart-has-rtscts;
++    status = "disabled";
++};
++
++/* UART <C> */
++&uart5 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_uart5>;
++	fsl,dte-mode;
++    status = "disabled";
++};
++
++/* I2C bus may be activated by base board */
++&sdma {
++        gpr = <&gpr>;
++        /* SDMA events remap for I2C */
++        fsl,sdma-event-remap = <0 1 1>;
++};
++
++&i2c1 {
++        dma-names = "rx","tx";
++        dmas = <&sdma 7 7 1>, <&sdma 7 7 1>;
++        status = "disabled";
++};
++
++&ecspi1 {
++        dmas = <&sdma 3 7 1>, <&sdma 4 7 2>;
++        dma-names = "rx", "tx";
++};
++
++&usdhc1 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_usdhc1 &pinctrl_usdhc1_cd>;
++	no-1-8-v;
++	cd-gpios = <&gpio1 3 GPIO_ACTIVE_LOW>;
++	disable-wp;
++	wakeup-source;
++	keep-power-in-suspend;
++	vmmc-supply = <&reg_3v3>;
++	status = "disabled";
++};
++
++&gpio1 {
++        gpio-line-names = "X1-24", "X1-16", "X2-63", "X2-32", "X2-65", "X2-64", "", "",
++                          "X1-21", "X1-15", "X2-72", "X2-66", "X1-9", "X2-29", "X2-59", "X2-62",
++                          "X2-40", "X2-39", "X2-25", "X2-27", "X1-18", "X1-17", "X1-20", "X1-19",
++                          "X2-69", "X2-57", "X2-58", "X2-47", "X2-36", "X2-33", "", "";
++};
++
++&gpio2 {
++        gpio-line-names = "X2-41", "X2-53", "X2-71", "", "X2-30", "X2-60", "X2-55", "X2-68",
++                          "", "", "", "", "", "", "", "",
++                          "X2-38", "X2-35", "X2-37", "X2-43", "X2-46", "X2-45", "", "",
++                          "", "", "", "", "", "", "", "";
++};
++
++&gpio3 {
++        gpio-line-names = "X1-22", "", "X2-44", "X2-54", "", "X2-50", "X2-48", "X2-42",
++                          "X2-23", "X2-52", "X2-24", "", "X2-26", "X1-26", "X1-25", "X1-28",
++                          "X1-27", "X1-30", "X1-29", "X1-32", "X1-31", "X2-49", "X2-51", "X2-28",
++                          "X2-34", "X2-22", "X2-21", "X2-19", "X2-20", "", "", "";
++};
++
++&gpio4 {
++        gpio-line-names = "", "", "", "", "", "", "", "",
++                          "", "", "", "", "", "", "X2-67", "",
++                          "X1-11", "", "X1-65", "X1-63", "X2-56", "", "", "X1-44",
++                          "X1-43", "X1-46", "X1-45", "X1-48", "X1-47", "", "", "";
++};
++
++&gpio5 {
++        gpio-line-names = "", "X2-31", "", "", "", "", "", "",
++                          "", "", "", "", "", "", "", "",
++                          "", "", "", "", "", "", "", "",
++                          "", "", "", "", "", "", "", "";
++};
++
++/**
++ * external bus interface for SJA1000
++ */
++/ {
++    soc {
++
++        weim: weim@21b8000 {
++            compatible = "fsl,imx6q-weim";
++	        reg = <0x021b8000 0x4000>;
++	        clocks = <&clks IMX6UL_CLK_EIM>;
++	        assigned-clocks = <&clks IMX6UL_CLK_EIM_SLOW_PODF>, <&clks IMX6UL_CLK_EIM_SLOW_SEL>;
++	        assigned-clock-parents = <0>, <&clks IMX6UL_CLK_AXI>;
++	        assigned-clock-rates = <132000000>;
++	        interrupts = <0 14 IRQ_TYPE_LEVEL_HIGH>;
++	        pinctrl-names = "default";
++            pinctrl-0 = <&pinctrl_weim_8A &pinctrl_weim_8D &pinctrl_weim_async_bus &pinctrl_weim_cs2>;
++	        #address-cells = <2>;
++	        #size-cells = <1>;
++	        status = "disabled";
++
++	        /* weim memory map: 64MB on CS0, 32MB on CS1, 32MB on CS2, 0MB on CS3 */
++	        ranges = <0 0 0x50000000 0x04000000
++	                  1 0 0x54000000 0x02000000
++	                  2 0 0x56000000 0x02000000>;
++	        fsl,weim-cs-gpr = <&gpr>;
++        };
++	};
++};
++
++/**
++ * enable Clocking with 800 MHz
++ */
++&cpu0 {
++    clock-frequency = <792000000>;
++    operating-points = <
++        /* kHz	uV */
++        792000	1225000
++        696000	1225000
++        528000	1175000
++        396000	1025000
++        198000	 950000
++    >;
++    fsl,soc-operating-points = <
++        /* KHz	uV */
++        792000	1225000
++        696000	1225000
++        528000	1175000
++        396000	1025000
++        198000	 950000
++    >;
++};
+Index: linux/drivers/clk/imx/clk-imx6ul.c
+===================================================================
+--- linux.orig/drivers/clk/imx/clk-imx6ul.c
++++ linux/drivers/clk/imx/clk-imx6ul.c
+@@ -68,12 +68,12 @@ static const char *sim_sels[] = { "sim_p
+ static const char *epdc_pre_sels[] = { "pll2_bus", "pll3_usb_otg", "pll5_video_div", "pll2_pfd0_352m", "pll2_pfd2_396m", "pll3_pfd2_508m", };
+ static const char *esai_sels[] = { "pll4_audio_div", "pll3_pfd2_508m", "pll5_video_div", "pll3_usb_otg", };
+ static const char *epdc_sels[] = { "epdc_podf", "ipp_di0", "ipp_di1", "ldb_di0", "ldb_di1", };
+-static const char *cko1_sels[] = { "dummy", "dummy", "dummy", "dummy", "dummy", "axi", "enfc", "dummy", "dummy",
++static const char *cko1_sels[] = { "dummy", "dummy", "dummy", "dummy", "dummy", "axi", "enfc", "dummy", "epdc_pix",
+ 				   "dummy", "lcdif_pix", "ahb", "ipg", "ipg_per", "ckil", "pll4_audio_div", };
+-static const char *cko2_sels[] = { "dummy", "dummy", "dummy", "usdhc1", "dummy", "dummy", "ecspi_root", "dummy",
+-				   "dummy", "dummy", "dummy", "dummy", "dummy", "dummy", "osc", "dummy",
+-				   "dummy", "usdhc2", "sai1", "sai2", "sai3", "dummy", "dummy", "can_root",
+-				   "dummy", "dummy", "dummy", "dummy", "uart_serial", "spdif", "dummy", "dummy", };
++static const char *cko2_sels[] = { "dummy", "periph2", "gpmi_bch", "usdhc1", "dummy", "dummy", "ecspi_root", "dummy",
++				   "bch_podf", "dummy", "arm", "csi", "dummy", "dummy", "osc", "dummy",
++				   "dummy", "usdhc2", "sai1", "sai2", "sai3", "dummy", "dummy", "can_podf",
++				   "dummy", "qspi1_podf", "dummy", "eim", "uart_podf", "spdif", "dummy", "dummy", };
+ static const char *cko_sels[] = { "cko1", "cko2", };
+ 
+ static struct clk *clks[IMX6UL_CLK_END];

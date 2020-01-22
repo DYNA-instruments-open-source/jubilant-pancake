@@ -1,0 +1,16 @@
+# /etc/conf.d/dcron
+
+# Options to pass to dcron at startup.
+# Default logging is via syslog; use -L to send to file.
+DCRON_OPTS="-t /run/dcron/cronstamps"
+
+start_pre() {
+    mkdir -p /run/dcron
+    test -d /var/spool/cron/cronstamps && mv /var/spool/cron/cronstamps /run/dcron/cronstamps
+    mkdir -p /run/dcron/cronstamps
+    test -L /var/spool/cron/cronstamps || ln -sfT /run/dcron/cronstamps /var/spool/cron/cronstamps
+    test -d /var/spool/cron/lastrun && mv /var/spool/cron/lastrun /run/dcron/lastrun
+    mkdir -p /run/dcron/lastrun
+    test -L /var/spool/cron/lastrun || ln -sfT /run/dcron/lastrun /var/spool/cron/lastrun
+    return 0
+}

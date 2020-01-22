@@ -1,0 +1,2 @@
+# MIN HOUR DAY MONTH DAYOFWEEK  COMMAND
+@hourly ID=save_swclock /etc/init.d/swclock --quiet save_now

@@ -1,0 +1,8 @@
+Startup aktivieren:
+
+
+Startup deaktivieren:
+
+rc.conf:
+
+sysctl:
