@@ -1,0 +1,40 @@
+Index: b/net/9p/client.c
+===================================================================
+--- a/net/9p/client.c
++++ b/net/9p/client.c
+@@ -181,9 +181,9 @@ static int parse_opts(char *opts, struct
+ 				ret = r;
+ 				continue;
+ 			}
+-			if (option < 4096) {
++			if (option < 160) {
+ 				p9_debug(P9_DEBUG_ERROR,
+-					 "msize should be at least 4k\n");
++					 "msize should be at least 160 Bytes\n");
+ 				ret = -EINVAL;
+ 				continue;
+ 			}
+@@ -995,9 +995,9 @@ static int p9_client_version(struct p9_c
+ 		goto error;
+ 	}
+ 
+-	if (msize < 4096) {
++	if (msize < 160) {
+ 		p9_debug(P9_DEBUG_ERROR,
+-			 "server returned a msize < 4096: %d\n", msize);
++			 "server returned a msize < 160: %d\n", msize);
+ 		err = -EREMOTEIO;
+ 		goto error;
+ 	}
+@@ -1057,9 +1057,9 @@ struct p9_client *p9_client_create(const
+ 	if (clnt->msize > clnt->trans_mod->maxsize)
+ 		clnt->msize = clnt->trans_mod->maxsize;
+ 
+-	if (clnt->msize < 4096) {
++	if (clnt->msize < 160) {
+ 		p9_debug(P9_DEBUG_ERROR,
+-			 "Please specify a msize of at least 4k\n");
++			 "Please specify a msize of at least 160 Bytes\n");
+ 		err = -EINVAL;
+ 		goto close_trans;
+ 	}
